@@ -141,6 +141,8 @@ class DDIMSampler(object):
         print(f"Running DDIM Sampling with {total_steps} timesteps")
 
         iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps)
+        if x0 is not None:
+            print(f"x0 is not None: {x0.shape} ")
 
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
