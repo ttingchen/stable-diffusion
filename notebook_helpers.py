@@ -14,7 +14,10 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from ldm.util import ismap
 import time
 from omegaconf import OmegaConf
-
+from pytorch_grad_cam import GradCAM
+import cv2
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
+from pytorch_grad_cam.utils.image import deprocess_image
 
 def download_models(mode):
 
@@ -244,9 +247,31 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         t0 = time.time()
         img_cb = None
 
+        # GradCam Mask
+        # model = resnet50(pretrained=True)
+        target_layers = [model.layer4[-1]]
+        input_tensor = x # Create an input tensor image for your model..
+        # Note: input_tensor can be a batch tensor with several images!
+
+        # Construct the CAM object once, and then re-use it on many images:
+        cam = GradCAM(model=model, target_layers=target_layers)#, use_cuda=args.use_cuda
+        targets = [ClassifierOutputTarget(903)]
+
+        # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
+        grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
+
+        # In this example grayscale_cam has only one image in the batch:
+        grayscale_cam = grayscale_cam[0, :]
+        cam_mask = cv2.merge([grayscale_cam, grayscale_cam, grayscale_cam])
+        mask = deprocess_image(cam_mask)
+        os.makedirs('./output', exist_ok=True)
+        cam_mask_output_path = os.path.join('./output', f'test_cam_mask.jpg')
+        cv2.imwrite(cam_mask_output_path, mask)
+        ###
+        
         sample, intermediates = convsample_ddim(model, c, steps=custom_steps, shape=z.shape,
                                                 eta=eta,
-                                                quantize_x0=quantize_x0, img_callback=img_cb, mask=None, x0=z0,
+                                                quantize_x0=quantize_x0, img_callback=img_cb, mask=cam_mask, x0=z0,
                                                 temperature=temperature, noise_dropout=noise_dropout,
                                                 score_corrector=corrector, corrector_kwargs=corrector_kwargs,
                                                 x_T=x_T, log_every_t=log_every_t)
