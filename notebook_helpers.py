@@ -18,6 +18,7 @@ from pytorch_grad_cam import GradCAM
 import cv2
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import deprocess_image
+from torchvision.models import resnet50
 
 def download_models(mode):
 
@@ -248,13 +249,13 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         img_cb = None
 
         # GradCam Mask
-        # model = resnet50(pretrained=True)
-        target_layers = [model.layer4[-1]]
+        grad_model = resnet50(pretrained=True)
+        target_layers = [grad_model.layer4[-1]]
         input_tensor = x # Create an input tensor image for your model..
         # Note: input_tensor can be a batch tensor with several images!
 
         # Construct the CAM object once, and then re-use it on many images:
-        cam = GradCAM(model=model, target_layers=target_layers)#, use_cuda=args.use_cuda
+        cam = GradCAM(model=grad_model, target_layers=target_layers)#, use_cuda=args.use_cuda
         targets = [ClassifierOutputTarget(903)]
 
         # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
@@ -268,7 +269,7 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         cam_mask_output_path = os.path.join('./output', f'test_cam_mask.jpg')
         cv2.imwrite(cam_mask_output_path, mask)
         ###
-        
+
         sample, intermediates = convsample_ddim(model, c, steps=custom_steps, shape=z.shape,
                                                 eta=eta,
                                                 quantize_x0=quantize_x0, img_callback=img_cb, mask=cam_mask, x0=z0,
