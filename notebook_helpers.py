@@ -16,8 +16,9 @@ import time
 from omegaconf import OmegaConf
 from pytorch_grad_cam import GradCAM
 import cv2
+import numpy as np
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-from pytorch_grad_cam.utils.image import deprocess_image
+from pytorch_grad_cam.utils.image import deprocess_image, preprocess_image
 from torchvision.models import resnet50
 
 def download_models(mode):
@@ -135,6 +136,7 @@ def visualize_cond_img(path):
 def run(model, selected_path, task, custom_steps, resize_enabled=False, classifier_ckpt=None, global_step=None):
 
     example = get_cond(task, selected_path)
+    image = Image.open(selected_path) 
 
     save_intermediate_vid = False
     n_runs = 1
@@ -175,7 +177,7 @@ def run(model, selected_path, task, custom_steps, resize_enabled=False, classifi
             x_T = torch.randn(1, custom_shape[1], custom_shape[2], custom_shape[3]).to(model.device)
             x_T = repeat(x_T, '1 c h w -> b c h w', b=custom_shape[0])
 
-        logs = make_convolutional_sample(example, model,
+        logs = make_convolutional_sample(image, example, model,
                                          mode=mode, custom_steps=custom_steps,
                                          eta=eta, swap_mode=False , masked=masked,
                                          invert_mask=invert_mask, quantize_x0=False,
@@ -209,7 +211,7 @@ def convsample_ddim(model, cond, steps, shape, eta=1.0, callback=None, normals_s
 
 
 @torch.no_grad()
-def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, eta=1.0, swap_mode=False, masked=False,
+def make_convolutional_sample(image, batch, model, mode="vanilla", custom_steps=None, eta=1.0, swap_mode=False, masked=False,
                               invert_mask=True, quantize_x0=False, custom_schedule=None, decode_interval=1000,
                               resize_enabled=False, custom_shape=None, temperature=1., noise_dropout=0., corrector=None,
                               corrector_kwargs=None, x_T=None, save_intermediate_vid=False, make_progrow=True,ddim_use_x0_pred=False):
@@ -220,7 +222,7 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
                                         force_c_encode=not (hasattr(model, 'split_input_params')
                                                             and model.cond_stage_key == 'coordinates_bbox'),
                                         return_original_cond=True)
-
+    torch.save(z,"z_tmp.pt")
     log_every_t = 1 if save_intermediate_vid else None
 
     if custom_shape is not None:
@@ -249,15 +251,18 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         img_cb = None
 
         # GradCam Mask
+        rgb_img = np.float32(image) / 255
+        input_tensor = preprocess_image(rgb_img,
+                                    mean=[0.485, 0.456, 0.406],
+                                    std=[0.229, 0.224, 0.225])#.to(torch.device("cpu"))
         grad_model = resnet50(pretrained=True)
         target_layers = [grad_model.layer4[-1]]
-        input_tensor = x # Create an input tensor image for your model..
+        # input_tensor = x.to(torch.device("cpu")) # Create an input tensor image for your model..
         # Note: input_tensor can be a batch tensor with several images!
-
         # Construct the CAM object once, and then re-use it on many images:
-        cam = GradCAM(model=grad_model, target_layers=target_layers)#, use_cuda=args.use_cuda
+        cam = GradCAM(model=grad_model, target_layers=target_layers, use_cuda=True)#, use_cuda=args.use_cuda
         targets = [ClassifierOutputTarget(903)]
-
+        torch.set_grad_enabled(True)
         # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
         grayscale_cam = cam(input_tensor=input_tensor, targets=targets)
 
@@ -269,7 +274,7 @@ def make_convolutional_sample(batch, model, mode="vanilla", custom_steps=None, e
         cam_mask_output_path = os.path.join('./output', f'test_cam_mask.jpg')
         cv2.imwrite(cam_mask_output_path, mask)
         ###
-
+        
         sample, intermediates = convsample_ddim(model, c, steps=custom_steps, shape=z.shape,
                                                 eta=eta,
                                                 quantize_x0=quantize_x0, img_callback=img_cb, mask=cam_mask, x0=z0,

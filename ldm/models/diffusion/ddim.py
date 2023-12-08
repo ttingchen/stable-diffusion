@@ -149,10 +149,10 @@ class DDIMSampler(object):
             ts = torch.full((b,), step, device=device, dtype=torch.long)
 
             if mask is not None:
-                assert x0 is not None
-                img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
-                img = img_orig * mask + (1. - mask) * img
-
+              x0 = torch.load("z_tmp.pt")
+              assert x0 is not None
+              img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
+              img = img_orig * mask + (1. - mask) * img # TODO: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
                                       noise_dropout=noise_dropout, score_corrector=score_corrector,
@@ -161,6 +161,7 @@ class DDIMSampler(object):
                                       unconditional_conditioning=unconditional_conditioning,
                                       dynamic_threshold=dynamic_threshold)
             img, pred_x0 = outs
+            # print("img shape:",img.shape) (1, 3, 256, 256)
             if callback: callback(i)
             if img_callback: img_callback(pred_x0, i)
 
