@@ -273,6 +273,8 @@ def make_convolutional_sample(image, batch, model, mode="vanilla", custom_steps=
         os.makedirs('./output', exist_ok=True)
         cam_mask_output_path = os.path.join('./output', f'test_cam_mask.jpg')
         cv2.imwrite(cam_mask_output_path, mask)
+        cam_mask = torch.unsqueeze(torchvision.transforms.ToTensor()(cam_mask), 0)
+        cam_mask = cam_mask.to(torch.device("cuda"))
         ###
         
         sample, intermediates = convsample_ddim(model, c, steps=custom_steps, shape=z.shape,
