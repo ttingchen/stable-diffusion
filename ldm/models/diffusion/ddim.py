@@ -8,6 +8,7 @@ from einops import rearrange
 
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, extract_into_tensor
 from ldm.models.diffusion.sampling_util import renorm_thresholding, norm_thresholding, spatial_norm_thresholding
+from ldm.models.diffusion.attack_utils import *
 
 
 class DDIMSampler(object):
@@ -143,6 +144,7 @@ class DDIMSampler(object):
         iterator = tqdm(time_range, desc='DDIM Sampler', total=total_steps)
         print(f"Testing")
         
+        attack_model = load_attack_model()
 
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
@@ -154,7 +156,8 @@ class DDIMSampler(object):
               img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
               # print('img_orig',img_orig.get_device())              
               
-              img = img_orig * mask + (1. - mask) * img # TODO: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+              img = img_orig * mask + (1. - mask) * img
+
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
                                       noise_dropout=noise_dropout, score_corrector=score_corrector,
@@ -163,6 +166,10 @@ class DDIMSampler(object):
                                       unconditional_conditioning=unconditional_conditioning,
                                       dynamic_threshold=dynamic_threshold)
             img, pred_x0 = outs
+            
+            attack_pred = get_attack_predict(attack_model, img)
+            img = apply_attack(attack_model, img, attack_pred)
+
             # print("img shape:",img.shape) (1, 3, 256, 256)
             if callback: callback(i)
             if img_callback: img_callback(pred_x0, i)
