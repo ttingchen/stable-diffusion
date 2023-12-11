@@ -229,7 +229,7 @@ def make_convolutional_sample(image, batch, model, mode="vanilla", custom_steps=
         z = torch.randn(custom_shape)
         print(f"Generating {custom_shape[0]} samples of shape {custom_shape[1:]}")
 
-    z0 = None
+    z0 = z
 
     log["input"] = x
     log["reconstruction"] = xrec

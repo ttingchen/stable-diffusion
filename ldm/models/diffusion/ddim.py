@@ -145,21 +145,30 @@ class DDIMSampler(object):
         print(f"Testing")
         
         attack_model = load_attack_model()
+        # mask = torch.ones_like(mask) 
         print("mask",mask)
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
             ts = torch.full((b,), step, device=device, dtype=torch.long)
 
             attack_pred = get_attack_predict(attack_model, img)
-            img = apply_attack(attack_model, img, attack_pred)
+            attack_img = apply_attack(attack_model, img, attack_pred)
+            assert not(torch.equal(img, attack_img))
+            # img = attack_img
 
             if mask is not None:
-              x0 = torch.load("z_tmp.pt")             
+              # x0 = torch.load("z_tmp.pt")             
               assert x0 is not None
               img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
-              # print('img_orig',img_orig.get_device())              
+              # print('img_orig',img_orig.get_device()) 
+              # print("img_orig range:", torch.min(img_orig),", ",torch.max(img_orig))             
+              # print("img range:", torch.min(img),", ",torch.max(img))             
+              # print("mask range:", torch.min(mask),", ",torch.max(mask))             
+              img_test = img * mask+ (1. - mask) * attack_img
+              # img = img_orig * mask+ (1. - mask) * img
               
-              img = img_orig * mask + (1. - mask) * img
+              assert not(torch.equal(img, img_test))
+              img = img_test
 
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
