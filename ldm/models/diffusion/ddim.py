@@ -145,10 +145,13 @@ class DDIMSampler(object):
         print(f"Testing")
         
         attack_model = load_attack_model()
-
+        print("mask",mask)
         for i, step in enumerate(iterator):
             index = total_steps - i - 1
             ts = torch.full((b,), step, device=device, dtype=torch.long)
+
+            attack_pred = get_attack_predict(attack_model, img)
+            img = apply_attack(attack_model, img, attack_pred)
 
             if mask is not None:
               x0 = torch.load("z_tmp.pt")             
@@ -167,9 +170,6 @@ class DDIMSampler(object):
                                       dynamic_threshold=dynamic_threshold)
             img, pred_x0 = outs
             
-            attack_pred = get_attack_predict(attack_model, img)
-            img = apply_attack(attack_model, img, attack_pred)
-
             # print("img shape:",img.shape) (1, 3, 256, 256)
             if callback: callback(i)
             if img_callback: img_callback(pred_x0, i)
