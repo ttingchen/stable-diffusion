@@ -222,12 +222,12 @@ def make_convolutional_sample(image, batch, model, mode="vanilla", custom_steps=
                                         force_c_encode=not (hasattr(model, 'split_input_params')
                                                             and model.cond_stage_key == 'coordinates_bbox'),
                                         return_original_cond=True)
-    torch.save(z,"z_tmp.pt")
+    # torch.save(z,"z_tmp.pt")
     log_every_t = 1 if save_intermediate_vid else None
 
-    if custom_shape is not None:
-        z = torch.randn(custom_shape)
-        print(f"Generating {custom_shape[0]} samples of shape {custom_shape[1:]}")
+    # if custom_shape is not None:
+    #     z = torch.randn(custom_shape)
+    #     print(f"Generating {custom_shape[0]} samples of shape {custom_shape[1:]}")
 
     z0 = z
 

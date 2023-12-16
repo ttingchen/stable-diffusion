@@ -156,8 +156,7 @@ class DDIMSampler(object):
             assert not(torch.equal(img, attack_img))
             # img = attack_img
 
-            if mask is not None:
-              # x0 = torch.load("z_tmp.pt")             
+            if mask is not None:           
               assert x0 is not None
               img_orig = self.model.q_sample(x0, ts)  # TODO: deterministic forward pass?
               # print('img_orig',img_orig.get_device()) 
