@@ -8,7 +8,7 @@ from einops import rearrange
 
 from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, extract_into_tensor
 from ldm.models.diffusion.sampling_util import renorm_thresholding, norm_thresholding, spatial_norm_thresholding
-from ldm.models.diffusion.attack_utils import *
+from attack_utils import *
 
 
 class DDIMSampler(object):
